@@ -37,7 +37,7 @@
   "name": "Odoo Inventory Management & Forecasting",
   "demo": false,
   "bestSeller": true,
-  "price": 569, 
+  "price": 1500, 
   "aggregatedRating": 4.8,
   "totalReviews": 25,
   "image": "<img className='p-2' src='https://techfinna.com/images/inventory/analyticsView1.png' alt='Odoo Inventory Management & Forecasting' width='100px' />",
