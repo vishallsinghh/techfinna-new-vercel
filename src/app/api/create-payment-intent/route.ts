@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import products from "../../../data/products.json";
+import products from "../../../../data/products.json";
 
 export const runtime = "nodejs"; // important for stripe sdk in some deployments
 
