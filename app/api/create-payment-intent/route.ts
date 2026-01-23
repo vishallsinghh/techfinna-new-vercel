@@ -20,59 +20,70 @@ function toCents(amountDollars: number | string) {
 }
 
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
+
+    const {
+      amount,
+      currency = "usd",
+      prodName,
+      prodVersion,
+      name,
+      email,
+      companyName,
+    } = body || {};
+
+    // Safety: validate
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json(
+        { error: "Invalid amount" },
+        { status: 400 }
+      );
+    }
+
+    // Convert dollars -> cents
+    const amountInCents = Math.round(parsedAmount * 100);
+
+    // Stripe minimum is usually $0.50 for USD (depends on method)
+    if (amountInCents < 50) {
+      return NextResponse.json(
+        { error: "Amount too small" },
+        { status: 400 }
+      );
+    }
+
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
-        { error: "Missing STRIPE_SECRET_KEY" },
+        { error: "Stripe secret key not configured" },
         { status: 500 }
       );
     }
 
-    const body = await req.json();
-    const { productName, prodVersion, href } = body || {};
-
-    if (!productName) {
-      return NextResponse.json(
-        { error: "Missing productName" },
-        { status: 400 }
-      );
-    }
-
-    // IMPORTANT: Don’t trust amount from client.
-    // Derive price server-side from your products.json
-    const product = Array.isArray(products)
-      ? products.find((p: any) => p?.href === href) || products.find((p: any) => p?.productName === productName)
-      : null;
-
-    // Fallback: if your JSON doesn't have productName, href match will work.
-    if (!product?.price) {
-      return NextResponse.json(
-        { error: "Invalid product / price not found" },
-        { status: 400 }
-      );
-    }
-
-    const amountInCents = toCents(product.price);
-
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
-      currency: "usd",
+      currency,
       automatic_payment_methods: { enabled: true },
       metadata: {
-        productName: String(productName),
-        prodVersion: String(prodVersion || ""),
-        href: String(href || ""),
+        customer_name: String(name || ""),
+        customer_email: String(email || ""),
+        companyName: String(companyName || ""),
+        product_name: String(prodName || ""),
+        odoo_version: String(prodVersion || ""),
       },
     });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
     });
-  } catch (err: any) {
+  } catch (error: any) {
+    console.error("create-payment-intent error:", error);
     return NextResponse.json(
-      { error: err?.message || "Server error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }
 }
+
